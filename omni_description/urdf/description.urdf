@@ -108,7 +108,7 @@
 			xyz="-0.03464101615 0.02 0"
 			rpy="1.570796326794896 0 1.047197551196597"
 		/>
-		<dynamics friction="0.001"/>
+		<dynamics friction="0"/>
 
 	</joint>
 	<link name="left_roller_e_link">
@@ -606,7 +606,7 @@
 			xyz="0 -0.04 0"
 			rpy="1.570796326794896 0 3.141592653589793"
 		/>
-		<dynamics friction="0.001"/>
+		<dynamics friction="0"/>
 
 	</joint>
 	<link name="back_roller_e_link">
@@ -1104,7 +1104,7 @@
 			xyz="0.03464101615 0.02 0"
 			rpy="1.570796326794896 0 -1.047197551196597"
 		/>
-		<dynamics friction="0.001"/>
+		<dynamics friction="0"/>
 
 	</joint>
 	<link name="right_roller_e_link">
@@ -1613,173 +1613,173 @@
 	<!-- Base -->
 	<gazebo reference="base_link">
     		<material>Gazebo/Orange</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<!-- Rueda Izquierda -->
 	<gazebo reference="left_rim_link">
     		<material>Gazebo/Red</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 	
 	<gazebo reference="left_roller_e_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="left_roller_ne_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="left_roller_n_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="left_roller_nw_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="left_roller_w_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="left_roller_sw_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="left_roller_s_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="left_roller_se_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<!-- Rueda Trasera -->
 	<gazebo reference="back_rim_link">
     		<material>Gazebo/Green</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 	
 	<gazebo reference="back_roller_e_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="back_roller_ne_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="back_roller_n_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="back_roller_nw_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="back_roller_w_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="back_roller_sw_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="back_roller_s_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="back_roller_se_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<!-- Rueda Derecha -->
 	<gazebo reference="right_rim_link">
     		<material>Gazebo/Red</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 	
 	<gazebo reference="right_roller_e_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="right_roller_ne_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="right_roller_n_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="right_roller_nw_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="right_roller_w_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="right_roller_sw_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="right_roller_s_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 	<gazebo reference="right_roller_se_link">
     		<material>Gazebo/Black</material>
-		<mu1>0.8</mu1>
-    		<mu2>0.8</mu2>
+			<mu1>1</mu1>
+    		<mu2>1</mu2>
 	</gazebo>
 
 </robot>
