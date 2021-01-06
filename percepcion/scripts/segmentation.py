@@ -11,9 +11,17 @@ bridge = CvBridge()
 currentImage = np.zeros((256,256,3),dtype="uint8")
 
 #Matriz de parametros intrinsecos de la camara
-K = np.array([[476.7030836014194, 0.0, 400.5], [0.0, 476.7030836014194, 400.5], [0.0, 0.0, 1.0]])
-R = np.identity(3)
-t = np.array([[0],[0],[1]])
+K  = np.array([[476.7030836014194, 0.0, 400.5], [0.0, 476.7030836014194, 400.5], [0.0, 0.0, 1.0]])
+
+#Rotacion y traslacion
+pi = 3.14159265359
+phi = pi
+psi = -pi/2
+Rx = np.array([[1, 0, 0],[0, cos(phi), -sin(phi)], [0,  sin(phi),  cos(phi)]])
+Rz = np.array([[cos(psi), -sin(psi), 0],[sin(psi),  cos(psi), 0], [0,  0,  1]])
+cRw = np.dot(Rz,Rx)
+ctw = np.array([[0],[0],[1]])
+
 def getImage(data):
 	global currentImage
 	try:
@@ -71,29 +79,49 @@ def pintarCentros(imagenOR,centros):
 	cv2.imshow("Image", currentImage)
 	cv2.waitKey(3)
 
-def inv_transf(pix_,K,t,z):
-	coord_xyz = z*np.dot(np.dot(np.transpose(R),np.linalg.inv(K)),pix_) - np.dot(np.transpose(R), t)
+def inv_transf(pix_,K,R,t,z):
+	xyz = z*np.dot(np.dot(np.transpose(R),np.linalg.inv(K)),pix_) - np.dot(np.transpose(R), t)
 	
-	return coord_xyz
+	"""
+	pix = pix_[0:2,0]
+	print("----pix----")
+	print(pix)
+
+	xy_n = np.dot((pix-K[0:2,2]),np.linalg.inv(K[0:2,0:2]))
+	print("----xy_n----")
+	print(xy_n)
+
+	xyz_c  = np.append(xy_n*z,z)[np.newaxis]
+	print("----xyz_c----")
+	print(xyz_c.T)
+
+	xyz = np.dot(R.T,(xyz_c.T - t))
+	print("----xyz----")
+	"""
+   
+	print(xyz)
+	return xyz
 
 def listener():
 	global myCameraInfo
+	global K
+	global cRw
+	global ctw
 	myCameraInfo = CameraInfo()    
 	rospy.init_node('lector', anonymous=True)
 	#rospy.Subscriber("camera1/camera_info", CameraInfo, newInfo)
 	rospy.Subscriber("camera1/image_raw", Image, getImage)
 	rate = rospy.Rate(10)
 	while not rospy.is_shutdown():
-		global K
-		global t
+		
 		centroX, centroY = getPosicion(currentImage,30,(10,15), False)
 		traseraX, traseraY = getPosicion(currentImage,122,(10,10), False)
 		pintarCentros(currentImage,[(centroX,centroY),(traseraX,traseraY)])
 		orientacion = atan2(float(centroX-traseraX),float(centroY-traseraY))
 		#print("Posicion: " + str(centroX) + " - " + str(centroY) + "\t//\t" + str(traseraX) + " - " + str(traseraY) + "\t" + str(orientacion))
 		pix_ = np.array([[centroX], [centroY], [1]])
-		xyz  = inv_transf(pix_,K,t,1)
-		print(xyz)
+		xyz  = inv_transf(pix_,K,cRw,ctw,1)
+		#print(xyz)
 		rate.sleep()
 
 
