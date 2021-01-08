@@ -4,6 +4,7 @@ import rospy,sys,cv2,roslib
 from math import sin,cos,sqrt,pow,atan2
 from sensor_msgs.msg import CameraInfo, Image
 from cv_bridge import CvBridge, CvBridgeError
+from geometry_msgs.msg import Pose
 import numpy as np
 
 bridge = CvBridge()
@@ -14,9 +15,8 @@ currentImage = np.zeros((256,256,3),dtype="uint8")
 K  = np.array([[476.7030836014194, 0.0, 400.5], [0.0, 476.7030836014194, 400.5], [0.0, 0.0, 1.0]])
 
 #Rotacion y traslacion
-pi = 3.14159265359
-phi = pi
-psi = -pi/2
+phi = np.pi
+psi = -np.pi/2
 Rx = np.array([[1, 0, 0],[0, cos(phi), -sin(phi)], [0,  sin(phi),  cos(phi)]])
 Rz = np.array([[cos(psi), -sin(psi), 0],[sin(psi),  cos(psi), 0], [0,  0,  1]])
 cRw = np.dot(Rz,Rx)
@@ -99,7 +99,6 @@ def inv_transf(pix_,K,R,t,z):
 	print("----xyz----")
 	"""
    
-	print(xyz)
 	return xyz
 
 def listener():
@@ -112,16 +111,32 @@ def listener():
 	#rospy.Subscriber("camera1/camera_info", CameraInfo, newInfo)
 	rospy.Subscriber("camera1/image_raw", Image, getImage)
 	rate = rospy.Rate(10)
+
+	#Publisher para enviar los datos
+	posicion_pub=rospy.Publisher('camera1/position_orientation', Pose, queue_size = 10)
+	data = Pose()
+
 	while not rospy.is_shutdown():
-		
+		#Orientacion: Angulo entre eje "y" del robot (direccion de avance) y el eje "x" [0,2*pi]
 		centroX, centroY = getPosicion(currentImage,30,(10,15), False)
 		traseraX, traseraY = getPosicion(currentImage,122,(10,10), False)
 		pintarCentros(currentImage,[(centroX,centroY),(traseraX,traseraY)])
-		orientacion = atan2(float(centroX-traseraX),float(centroY-traseraY))
-		#print("Posicion: " + str(centroX) + " - " + str(centroY) + "\t//\t" + str(traseraX) + " - " + str(traseraY) + "\t" + str(orientacion))
+		orientacion = np.pi + atan2(float(centroX-traseraX),float(centroY-traseraY))
+		if orientacion > np.pi :
+			orientacion = orientacion - 2*np.pi
+
 		pix_ = np.array([[centroX], [centroY], [1]])
 		xyz  = inv_transf(pix_,K,cRw,ctw,1)
-		#print(xyz)
+		print("Posicion: " + str(xyz[0]) + " - " + str(xyz[1]) + "\t//\t"  + "\t" + str(orientacion))
+		
+		#Se incluyen los valores de posicion y orientacion en 'data', que tipo Pose()
+		data.position.x = xyz[0]
+		data.position.y = xyz[1]
+		data.position.z = xyz[2]
+		data.orientation.w = orientacion
+		posicion_pub.publish(data)
+
+		
 		rate.sleep()
 
 

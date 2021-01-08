@@ -3,6 +3,7 @@
 import rospy
 from std_msgs.msg import Float64 #Tipo de dato del controlador de velocidad.
 from geometry_msgs.msg import Twist #Con el mensaje 'Twist', vamos a recibir del otro programa tanto velocidad linea, angular, como el angulo de giro theta
+from geometry_msgs.msg import Pose, Point, Quaternion
 from math import pow, atan2, sqrt, cos, sin
 
 rospy.set_param('/stop',1) #Con esta variable se puede parar el cacharro. Habra que de alguna manera sincronizarlo con el conrtrol a mas alto nivel, una vez se acabe el recorrido.
@@ -23,17 +24,24 @@ class Omnirobot:
         # Subscriber para la senal de control
         self.control_signal = rospy.Subscriber('/omniRobot_controlsignal', Twist, self.control_update)
 
+	#Subscriptor del angulo de giro theta
+	pos_sub = rospy.Subscriber('camera1/position_orientation', Pose, self.theta_update)
+
         self.vel_control = Twist()
+	self.theta = Pose()
         self.rate = rospy.Rate(10)
+    
+    def theta_update(self, data):
+	self.theta.orientation.w = data.orientation.w
         
     def control_update(self, data):
         self.vel_control = data
 
-    def velocidad_wx(self, theta=0): #Theta viene a indicar el angulo de giro con respecto al eje z. Es comun para sistema de referencia global y local. (PROVISIONAL)
-        return cos(theta)*self.vel_control.linear.x + sin(theta)*self.vel_control.linear.y
+    def velocidad_wx(self): #Theta viene a indicar el angulo de giro con respecto al eje z. Es comun para sistema de referencia global y local. (PROVISIONAL)
+        return cos(self.theta.orientation.w)*self.vel_control.linear.x + sin(self.theta.orientation.w)*self.vel_control.linear.y
 
-    def velocidad_wy(self, theta=0):
-        return -sin(theta)*self.vel_control.linear.x + cos(theta)*self.vel_control.linear.y
+    def velocidad_wy(self):
+        return -sin(self.theta.orientation.w)*self.vel_control.linear.x + cos(self.theta.orientation.w)*self.vel_control.linear.y
 
     def publish(self, L=1): #L es la distancia del centro de la base a una de las ruedas.
         right_vel = Float64()
@@ -51,7 +59,7 @@ class Omnirobot:
 		self.velocity_left.publish(left_vel)
 		self.velocity_back.publish(back_vel)
 
-		self.rate.sleep() #Hacemos el muestreo
+		self.rate.sleep()
 
 	#Paramos las ruedas
 	left_vel.data = 0 
@@ -65,7 +73,7 @@ class Omnirobot:
 if __name__ == '__main__':
     try:
 	p = Omnirobot()
-	p.publish()
+	p.publish();
     except rospy.ROSInterruptException:
         pass
 
