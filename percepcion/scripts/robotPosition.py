@@ -16,11 +16,11 @@ K  = np.array([[476.7030836014194, 0.0, 400.5], [0.0, 476.7030836014194, 400.5],
 
 #Rotacion y traslacion
 phi = np.pi
-psi = -np.pi/2
+psi = -0
 Rx = np.array([[1, 0, 0],[0, cos(phi), -sin(phi)], [0,  sin(phi),  cos(phi)]])
 Rz = np.array([[cos(psi), -sin(psi), 0],[sin(psi),  cos(psi), 0], [0,  0,  1]])
 cRw = np.dot(Rz,Rx)
-ctw = np.array([[0],[0],[1]])
+ctw = np.array([[0],[0],[4]])
 
 def getImage(data):
 	global currentImage
@@ -37,21 +37,27 @@ def newInfo(data):
 	rospy.loginfo("\nRecibido nueva info:\n" + str(data))
 
 def getPosicion(imagenOR, h_color, th, mostrar):
-	imagen = imagenOR
+	imagen = imagenOR.copy()
 
 	## BINARIZACION Y APLICACION DE CRITERIO DE COLOR EN HSV
 	hmin = h_color - th[0]
 	hmax = h_color + th[1]
 	frameHSV = cv2.cvtColor(imagen, cv2.COLOR_BGR2HSV)
 	frameThreshold = cv2.inRange(frameHSV,(hmin/360.0*179,0,0),(hmax/360.0*179,255,255))
-	
+	im2, contours, hier = cv2.findContours(frameThreshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
 
 	## CALCULO DEL CENTRO DEL BLOB
 	# Usamos los momentos de CV2 para su calculo mas rapido
+	n = 0
+	cX = 0
+	cY = 0
+	# Si hay varios bloques, hacemos la media ponderada por peso
 	M = cv2.moments(frameThreshold)
 	if(M["m00"] != 0):
-		cX = int(M["m10"] / M["m00"])
-		cY = int(M["m01"] / M["m00"])
+		cX += int(M["m10"]/M["m00"])
+		cY += int(M["m01"]/M["m00"])
+		n = n + M["m00"]
 	else:
 		cX, cY = 0, 0
 		print("\nERROR CENTRO")
@@ -71,13 +77,17 @@ def getPosicion(imagenOR, h_color, th, mostrar):
 
 	return cX, cY
 
-def pintarCentros(imagenOR,centros):
-	imagen = imagenOR
+def pintarCentros(imagenOR,centros,angulo):
+	imagen = imagenOR.copy()
 	for cX, cY in centros:
 		cv2.circle(imagen, (cX, cY), 2, (255, 255, 255), -1)
 
-	cv2.imshow("Image", currentImage)
-	cv2.waitKey(3)
+	finalx, finaly = centros[0]
+	finalx += 100*cos(angulo)
+	finaly += 100*sin(angulo)
+	imagen = cv2.arrowedLine(imagen, centros[0], (int(finalx),int(finaly)), (0,255,255), 3) 
+	cv2.imshow("Image", imagen)
+	cv2.waitKey(1)
 
 def inv_transf(pix_,K,R,t,z):
 	xyz = z*np.dot(np.dot(np.transpose(R),np.linalg.inv(K)),pix_) - np.dot(np.transpose(R), t)
@@ -107,23 +117,32 @@ def listener():
 	global cRw
 	global ctw
 	myCameraInfo = CameraInfo()    
-	rospy.init_node('lector', anonymous=True)
+	rospy.init_node('robotPosition', anonymous=True)
 	#rospy.Subscriber("camera1/camera_info", CameraInfo, newInfo)
 	rospy.Subscriber("camera1/image_raw", Image, getImage)
-	rate = rospy.Rate(10)
+	rate = rospy.Rate(30)
 
 	#Publisher para enviar los datos
 	posicion_pub=rospy.Publisher('camera1/position_orientation', Pose, queue_size = 10)
 	data = Pose()
 
 	while not rospy.is_shutdown():
-		#Orientacion: Angulo entre eje "y" del robot (direccion de avance) y el eje "x" [0,2*pi]
+		
+		# Sacamos los dos puntos necesarios con segmentacion
 		centroX, centroY = getPosicion(currentImage,30,(10,15), False)
-		traseraX, traseraY = getPosicion(currentImage,122,(10,10), False)
-		pintarCentros(currentImage,[(centroX,centroY),(traseraX,traseraY)])
-		orientacion = np.pi + atan2(float(centroX-traseraX),float(centroY-traseraY))
-		if orientacion > np.pi :
-			orientacion = orientacion - 2*np.pi
+		delanteraX, delanteraY = getPosicion(currentImage,122,(10,10), False)
+
+		#Orientacion: Angulo entre eje "x" del robot (direccion de avance) y el eje "x" [0,2*pi]
+		orientacion = atan2(float(delanteraY-centroY),float(delanteraX-centroX))
+		#if orientacion > np.pi :
+		#	orientacion = orientacion - 2*np.pi
+
+		#Los pintamos para visualizarlos
+		pintarCentros(currentImage,[(centroX,centroY),(delanteraX,delanteraY)],orientacion)
+		
+		
+		orientacion = -orientacion
+
 
 		pix_ = np.array([[centroX], [centroY], [1]])
 		xyz  = inv_transf(pix_,K,cRw,ctw,1)

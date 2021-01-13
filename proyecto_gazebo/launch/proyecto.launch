@@ -4,9 +4,18 @@
     <arg name="world_name" value="$(find proyecto_gazebo)/worlds/proyecto.world"/>
     <!-- more default parameters can be changed here -->
   </include>
-  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find omni_description)/urdf/description.urdf -urdf -x 0 -y 0 -z 0 -model omniRobot" />
+  
+  <arg name="use_sim_time" default="true" />
+  <arg name="gui" default="true" />
+  <arg name="headless" default="false" />
 
-  <node name="spawn_camera" pkg="gazebo_ros" type="spawn_model" args="-file $(find camera_description)/urdf/camera.urdf -urdf -x 0 -y 0 -z 1 -model CPRcamera" />
+<include file="$(find nexus_4wd_mecanum_description)/launch/nexus_4wd_mecanum_description.launch" />
 
-  <include file="$(find omnirobot_control)/launch/omnirobot_control.launch"/>
+  <!-- Spawn the robot -->
+  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model"
+        args="-urdf -model nexus_4wd_mecanum -param robot_description -x 0 -y 0 -z 0.5" />
+
+  <!-- Camara -->
+  <node name="spawn_camera" pkg="gazebo_ros" type="spawn_model" args="-file $(find camera_description)/urdf/camera.urdf -urdf -x 0 -y 0 -z 4 -model CPRcamera" />
+
 </launch>
