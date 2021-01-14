@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro name="urm04_sensor" params="frame_name ros_topic update_rate min_range max_range horizontal_field_of_view vertical_field_of_view ray_count">
 
     <gazebo reference="${frame_name}">

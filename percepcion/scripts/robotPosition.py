@@ -145,7 +145,7 @@ def listener():
 
 
 		pix_ = np.array([[centroX], [centroY], [1]])
-		xyz  = inv_transf(pix_,K,cRw,ctw,1)
+		xyz  = inv_transf(pix_,K,cRw,ctw,ctw[2])
 		print("Posicion: " + str(xyz[0]) + " - " + str(xyz[1]) + "\t//\t"  + "\t" + str(orientacion))
 		
 		#Se incluyen los valores de posicion y orientacion en 'data', que tipo Pose()
