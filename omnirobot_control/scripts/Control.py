@@ -61,9 +61,7 @@ def error_ang(waypoint):
 #Funcion que realiza el control
 def control():
 	global pose_act, waypoint
-	check = Flag()
-	check.flag = 1
-	flag_check.publish(check) #Publicamos el flag a 1, para recibir el siguiente punto
+	
 	rate = rospy.Rate(30)
 
     #Creamos el mensaje que publicaremos
@@ -75,7 +73,7 @@ def control():
 	controlsignal.angular.x = 0
 	controlsignal.angular.y = 0
 
-	rate.sleep() #Pequeño 'sleep' para asegurarnos de que recibimos el nuevo punto a tiempo
+	rate.sleep() #Pequeno 'sleep' para asegurarnos de que recibimos el nuevo punto a tiempo
 
 	while((abs(error_dist(waypoint)) >= rospy.get_param('tolerancia')) or (abs(error_ang(waypoint)) >= rospy.get_param('tolerancia'))):
 
@@ -88,6 +86,10 @@ def control():
 
 		kinetic.publish(controlsignal)
 		rate.sleep()
+
+	check = Flag()
+	check.flag = 1
+	flag_check.publish(check) #Publicamos el flag a 1, para recibir el siguiente punto
 		
 if __name__ == '__main__':
 

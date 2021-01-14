@@ -6,13 +6,19 @@ from omnirobot_control.msg import Waypoint,Flag
 import numpy as np
 
 pto = 0
+nVector = 0
 def actualizaPunto(data):
 	global pto
+	global nVector
 	if (data.flag==1):
-		pto = pto + 1
+		if(pto >= nVector-1):
+			pto = 0
+		else:
+			pto = pto + 1
 
 def listener():
 	global pto
+	global nVector
 	
 	rospy.init_node('dosificador', anonymous=True)
 	#Nos suscribimos al planificador

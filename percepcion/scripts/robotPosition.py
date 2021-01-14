@@ -83,9 +83,9 @@ def pintarCentros(imagenOR,centros,angulo):
 		cv2.circle(imagen, (cX, cY), 2, (255, 255, 255), -1)
 
 	finalx, finaly = centros[0]
-	finalx += 100*cos(angulo)
-	finaly += 100*sin(angulo)
-	imagen = cv2.arrowedLine(imagen, centros[0], (int(finalx),int(finaly)), (0,255,255), 3) 
+	finalx += 30*cos(angulo)
+	finaly += 30*sin(angulo)
+	imagen = cv2.arrowedLine(imagen, centros[0], (int(finalx),int(finaly)), (0,255,255), 1) 
 	cv2.imshow("Image", imagen)
 	cv2.waitKey(1)
 
