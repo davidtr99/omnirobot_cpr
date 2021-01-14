@@ -93,7 +93,22 @@ def segmentacionBinaria(imagenOR, h_color, th, mostrar):
 
     return frameThreshold
 
+def morf(im_o, rMaskOp, rMaskCl,mostrar):
+	im = np.copy(im_o)
 
+	if rMaskCl != 0:
+		kernelCl = np.ones((2*rMaskCl+1, 2*rMaskCl+1))
+		im = cv2.morphologyEx(im, cv2.MORPH_CLOSE, kernelCl)
+
+	if rMaskOp != 0:
+		kernelOp = np.ones((2*rMaskOp+1, 2*rMaskOp+1))
+		im = cv2.morphologyEx(im, cv2.MORPH_OPEN, kernelOp)
+
+	if mostrar == True:
+		cv2.imshow("Morf Image", im)
+		cv2.waitKey(1)
+
+	return im
 
 def inv_transf(pix_,K,R,t,z):
 	xyz = z*np.dot(np.dot(np.transpose(R),np.linalg.inv(K)),pix_) - np.dot(np.transpose(R), t)
@@ -134,7 +149,8 @@ def listener():
 
 	while not rospy.is_shutdown():
         #Segmentamos la imagen actual
-		segmentacionBinaria(currentImage,240,(10,10),True)
+		im_bin = segmentacionBinaria(currentImage,240,(10,10),True)
+		im_morf = morf(im_bin,1,1,True)
 
 		
 		rate.sleep()
