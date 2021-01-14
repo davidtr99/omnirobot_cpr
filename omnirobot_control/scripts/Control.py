@@ -2,10 +2,13 @@
 import rospy
 from std_msgs.msg import Float64 #Tipo de dato del controlador de velocidad
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
+from omnirobot_control.msg import Waypoint, Flag
 from math import sin,cos,sqrt,pow,atan2,pi
+import numpy as np
 
 #Posicion actual (variable global)
-global pose_act
+global pose_act, waypoint
+waypoint = Waypoint()
 pose_act = Pose()
 
 #Tolerancia
@@ -15,7 +18,13 @@ rospy.set_param('tolerancia', 0.01)
 rospy.set_param('Kv', 1)
 rospy.set_param('Kw', 3)
 
-#Funcion que se llama cuando el suscriptor recibe un nuevo mensaje de tipo Pose
+#Funcion que se llama para actualizar el punto final de la trayectoria
+def update_waypoint(data):
+	waypoint.x = data.x
+	waypoint.y = data.y
+	waypoint.theta = data.theta
+
+#Funcion que actualiza la posicion actual de robot, desde la camara percepcion
 def posicion(data):
     global pose_act
     pose_act.position.x = data.position.x
@@ -31,29 +40,30 @@ def error_dist(waypoint):
 #Funcion que calcula el angulo que tiene que girar
 def error_ang(waypoint):
 	global pose_act
-	if (waypoint.z > 0 and pose_act.orientation.w > 0):
-		return waypoint.z * (pi/180) - pose_act.orientation.w
-	elif (waypoint.z > 0 and pose_act.orientation.w < 0):
-		if (waypoint.z*(pi/180) - pose_act.orientation.w <= abs(waypoint.z*(pi/180) - (pose_act.orientation.w + 2*pi))):
-			return  waypoint.z*(pi/180) - pose_act.orientation.w
+	if (waypoint.theta > 0 and pose_act.orientation.w > 0):
+		return waypoint.theta * (pi/180) - pose_act.orientation.w
+	elif (waypoint.theta > 0 and pose_act.orientation.w < 0):
+		if (waypoint.theta*(pi/180) - pose_act.orientation.w <= abs(waypoint.theta*(pi/180) - (pose_act.orientation.w + 2*pi))):
+			return  waypoint.theta*(pi/180) - pose_act.orientation.w
 		else:
-			return waypoint.z*(pi/180) - (pose_act.orientation.w + 2*pi)
-	elif (waypoint.z < 0 and pose_act.orientation.w > 0):
-		if (waypoint.z*(pi/180)+2*pi - pose_act.orientation.w <= abs(waypoint.z*(pi/180)-pose_act.orientation.w)):
-			return waypoint.z*(pi/180)+2*pi - pose_act.orientation.w
+			return waypoint.theta*(pi/180) - (pose_act.orientation.w + 2*pi)
+	elif (waypoint.theta < 0 and pose_act.orientation.w > 0):
+		if (waypoint.theta*(pi/180)+2*pi - pose_act.orientation.w <= abs(waypoint.theta*(pi/180)-pose_act.orientation.w)):
+			return waypoint.theta*(pi/180)+2*pi - pose_act.orientation.w
 		else:
-			return waypoint.z*(pi/180)-pose_act.orientation.w
+			return waypoint.theta*(pi/180)-pose_act.orientation.w
 	else:
-		if (abs(waypoint.z*(pi/180)-pose_act.orientation.w) <= (waypoint.z*(pi/180)+2*pi)-pose_act.orientation.w):
-			return waypoint.z*(pi/180)-pose_act.orientation.w
+		if (abs(waypoint.theta*(pi/180)-pose_act.orientation.w) <= (waypoint.theta*(pi/180)+2*pi)-pose_act.orientation.w):
+			return waypoint.theta*(pi/180)-pose_act.orientation.w
 		else:
-			return (waypoint.z*(pi/180)+2*pi)-pose_act.orientation.w
+			return (waypoint.theta*(pi/180)+2*pi)-pose_act.orientation.w
 
 #Funcion que realiza el control
 def control():
-	global pose_act
-
-	waypoint = Point()
+	global pose_act, waypoint
+	check = Flag()
+	check.flag = 1
+	flag_check.publish(check) #Publicamos el flag a 1, para recibir el siguiente punto
 	rate = rospy.Rate(30)
 
     #Creamos el mensaje que publicaremos
@@ -65,11 +75,9 @@ def control():
 	controlsignal.angular.x = 0
 	controlsignal.angular.y = 0
 
-	#Pedimos las coordenas del punto destino
-	waypoint.x = float(input("x: "))
-	waypoint.y = float(input("y: "))
-	waypoint.z = float(input("theta([-180,180]): ")) #Angulo de orientacion con el que llega al punto final
-	while((abs(error_dist(waypoint)) >= rospy.get_param('tolerancia')) or (abs(error_ang(waypoint)) >= 0.06)):
+	rate.sleep() #Pequeño 'sleep' para asegurarnos de que recibimos el nuevo punto a tiempo
+
+	while((abs(error_dist(waypoint)) >= rospy.get_param('tolerancia')) or (abs(error_ang(waypoint)) >= rospy.get_param('tolerancia'))):
 
 		controlsignal.angular.z = rospy.get_param('Kw')*error_ang(waypoint)
 		controlsignal.linear.x = rospy.get_param('Kv')*(error_dist(waypoint)*cos(atan2(waypoint.y - pose_act.position.y,waypoint.x-pose_act.position.x)-pose_act.orientation.w))
@@ -83,16 +91,21 @@ def control():
 		
 if __name__ == '__main__':
 
-	#inicio el nodo control tortuga
+	#Inicio del nodo del control propomnidireccional (CPAL) 
 	rospy.init_node('control_omnirobot',anonymous=True)
 	
 	#Subscriptor del topic de la camara
 	pos_sub = rospy.Subscriber('camera1/position_orientation', Pose, posicion)
+
+	#Subscriptor del topic del dosificador de puntos
+	points_sub = rospy.Subscriber('omnirobot_control/dosificador', Waypoint, update_waypoint) 
 	
-	#Publisher del InverseKinetic, para enviarselo al control mas bajo
+	#Publisher del controlador, para el movimiento del robot
 	kinetic = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
 
-	#llamamos a la funcion de control
+	#Publisher del flag de esta para el dosificador
+	flag_check = rospy.Publisher('/flag_check', Flag, queue_size=10)
+
+	#Llamamos a la funcion de control
 	while(True):
 		control()
-
