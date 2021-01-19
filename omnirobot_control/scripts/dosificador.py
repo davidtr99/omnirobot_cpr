@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy,sys,cv2,roslib
+import rospy,sys,roslib
 
 from math import sin,cos,sqrt,pow,atan2
 from omnirobot_control.msg import Waypoint,Flag

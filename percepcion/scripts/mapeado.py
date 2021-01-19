@@ -132,6 +132,28 @@ def inv_transf(pix_,K,R,t,z):
    
 	return xyz
 
+def discretizador(im,nfil,ncol,mostrar):
+	mapa_res = np.zeros((nfil,ncol))
+	M,N = im.shape
+	Mi = round(M/nfil)
+	Ni = round(N/ncol)
+
+	for i in range(0,nfil):
+		for j in range(0,ncol):
+			bloque = np.add.reduce(im[i*Mi:(i+1)*Mi,j*Ni:(j+1)*Ni],None)
+			if bloque != 0 :
+				bloque = 1
+			mapa_res[i,j]=bloque
+
+	if mostrar == True:
+		cv2.imshow("Map Image", mapa_res)
+		cv2.waitKey(1)
+	
+	return mapa_res
+			
+
+
+
 def listener():
 	global myCameraInfo
 	global K
@@ -149,8 +171,9 @@ def listener():
 
 	while not rospy.is_shutdown():
         #Segmentamos la imagen actual
-		im_bin = segmentacionBinaria(currentImage,240,(10,10),True)
+		im_bin = segmentacionBinaria(currentImage,240,(10,10),False)
 		im_morf = morf(im_bin,1,1,True)
+		mapa = discretizador(im_morf,30,30,True)
 
 		
 		rate.sleep()
