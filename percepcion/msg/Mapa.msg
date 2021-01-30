@@ -1,1 +1,3 @@
-uint32[900] mapa
+uint32[] mapa
+uint8 nfil
+uint8 ncol

@@ -4,7 +4,7 @@ import rospy,sys,cv2,roslib
 from math import sin,cos,sqrt,pow,atan2
 from sensor_msgs.msg import CameraInfo, Image
 from cv_bridge import CvBridge, CvBridgeError
-from geometry_msgs.msg import Pose
+from percepcion.msg import Mapa
 import numpy as np
 
 bridge = CvBridge()
@@ -151,7 +151,15 @@ def discretizador(im,nfil,ncol,mostrar):
 	
 	return mapa_res
 			
+def linealizador(mapa,nfil,ncol):
+	tamVector = nfil*ncol
+	vector = np.ndarray((1,tamVector))
 
+	for i in range(0,nfil):
+		for j in range(0,ncol):
+			vector[0,i*nfil+j]= mapa[i,j]
+
+	return vector
 
 
 def listener():
@@ -159,6 +167,12 @@ def listener():
 	global K
 	global cRw
 	global ctw
+	#Tamanio del mapa
+	fil = 30
+	col = 30
+	
+	enviar = 1
+
 	myCameraInfo = CameraInfo()    
 	rospy.init_node('mapper', anonymous=True)
 	#rospy.Subscriber("camera1/camera_info", CameraInfo, newInfo)
@@ -166,16 +180,24 @@ def listener():
 	rate = rospy.Rate(30)
 
 	#Publisher para enviar los datos
-	posicion_pub=rospy.Publisher('camera1/position_orientation', Pose, queue_size = 10)
-	data = Pose()
+	mapa_pub=rospy.Publisher('mapper/mapa', Mapa, queue_size = 10)
+	data = Mapa()
 
 	while not rospy.is_shutdown():
         #Segmentamos la imagen actual
 		im_bin = segmentacionBinaria(currentImage,240,(10,10),False)
 		im_morf = morf(im_bin,1,1,True)
-		mapa = discretizador(im_morf,30,30,True)
-
+		mapa = discretizador(im_morf,fil,col,True)
+		mapa_vector = linealizador(mapa,fil,col)
 		
+		if enviar :
+			print(mapa_vector)
+			print(mapa_vector.astype(np.uint8).tolist())
+			data.mapa = mapa_vector.astype(np.uint8).tolist()[0][:]
+			data.nfil = fil
+			data.ncol = col
+			mapa_pub.publish(data)
+			enviar = 1
 		rate.sleep()
 
 
