@@ -52,6 +52,7 @@ add_message_files(
   FILES
   Waypoint.msg
   Flag.msg
+  V_waypoint.msg
 )
 
 ## Generate services in the 'srv' folder

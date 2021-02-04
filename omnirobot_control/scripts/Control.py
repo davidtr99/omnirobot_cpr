@@ -2,7 +2,7 @@
 import rospy
 from std_msgs.msg import Float64 #Tipo de dato del controlador de velocidad
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
-from omnirobot_control.msg import Waypoint, Flag
+from omnirobot_control.msg import Waypoint
 from math import sin,cos,sqrt,pow,atan2,pi
 import numpy as np
 
@@ -12,7 +12,7 @@ waypoint = Waypoint()
 pose_act = Pose()
 
 #Tolerancia
-rospy.set_param('tolerancia', 0.01)
+rospy.set_param('tolerancia', 0.05)
 
 #Ganancia de los controladores
 rospy.set_param('Kv', 1)
@@ -20,6 +20,7 @@ rospy.set_param('Kw', 3)
 
 #Funcion que se llama para actualizar el punto final de la trayectoria
 def update_waypoint(data):
+	global waypoint
 	waypoint.x = data.x
 	waypoint.y = data.y
 	waypoint.theta = data.theta
@@ -78,18 +79,15 @@ def control():
 	while((abs(error_dist(waypoint)) >= rospy.get_param('tolerancia')) or (abs(error_ang(waypoint)) >= rospy.get_param('tolerancia'))):
 
 		controlsignal.angular.z = rospy.get_param('Kw')*error_ang(waypoint)
-		controlsignal.linear.x = rospy.get_param('Kv')*(error_dist(waypoint)*cos(atan2(waypoint.y - pose_act.position.y,waypoint.x-pose_act.position.x)-pose_act.orientation.w))
-		controlsignal.linear.y = rospy.get_param('Kv')*(error_dist(waypoint)*sin(atan2(waypoint.y - pose_act.position.y,waypoint.x-pose_act.position.x)-pose_act.orientation.w))
+		controlsignal.linear.x = rospy.get_param('Kv')*error_dist(waypoint)*(cos(atan2(waypoint.y - pose_act.position.y,waypoint.x-pose_act.position.x)-pose_act.orientation.w))
+		controlsignal.linear.y = rospy.get_param('Kv')*error_dist(waypoint)*(sin(atan2(waypoint.y - pose_act.position.y,waypoint.x-pose_act.position.x)-pose_act.orientation.w))
 
 		print("error angular: ", error_ang(waypoint),"\tsenal de control: ", controlsignal.angular.z)
-		print("error lineal: ", error_dist(waypoint),"\tsenal de control: ", controlsignal.linear.y)
+		print("error lineal: ", error_dist(waypoint),"\tsenal de control: ", controlsignal.linear.x , " " , controlsignal.linear.y)
 
 		kinetic.publish(controlsignal)
 		rate.sleep()
 
-	check = Flag()
-	check.flag = 1
-	flag_check.publish(check) #Publicamos el flag a 1, para recibir el siguiente punto
 		
 if __name__ == '__main__':
 
@@ -104,9 +102,6 @@ if __name__ == '__main__':
 	
 	#Publisher del controlador, para el movimiento del robot
 	kinetic = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
-
-	#Publisher del flag de esta para el dosificador
-	flag_check = rospy.Publisher('/flag_check', Flag, queue_size=10)
 
 	#Llamamos a la funcion de control
 	while(True):

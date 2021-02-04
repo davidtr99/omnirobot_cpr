@@ -5,7 +5,9 @@ from math import sin,cos,sqrt,pow,atan2
 from sensor_msgs.msg import CameraInfo, Image
 from cv_bridge import CvBridge, CvBridgeError
 from percepcion.msg import Mapa
+from geometry_msgs.msg import Pose
 import numpy as np
+import time as time
 
 bridge = CvBridge()
 
@@ -62,8 +64,6 @@ def getPosicion(imagenOR, h_color, th, mostrar):
 		cX, cY = 0, 0
 		print("\nERROR CENTRO")
 
-
-
 	if(mostrar == True):
 		# Pintamos un circulo en la imagen original para ver el
 		cv2.circle(imagen, (cX, cY), 2, (255, 255, 255), -1)
@@ -94,6 +94,9 @@ def segmentacionBinaria(imagenOR, h_color, th, mostrar):
     return frameThreshold
 
 def morf(im_o, rMaskOp, rMaskCl,mostrar):
+
+	#Aplicamos morfologia al mapa para eliminar pequenios huecos o imperfecciones
+
 	im = np.copy(im_o)
 
 	if rMaskCl != 0:
@@ -111,9 +114,12 @@ def morf(im_o, rMaskOp, rMaskCl,mostrar):
 	return im
 
 def inv_transf(pix_,K,R,t,z):
+
+	#Realizamos la transformada inversa del punto que le pasemos asumiendo que estamos al altura del suelo
 	xyz = z*np.dot(np.dot(np.transpose(R),np.linalg.inv(K)),pix_) - np.dot(np.transpose(R), t)
 	
 	"""
+	#Desglose de la transformacion inversa a modo de Debug
 	pix = pix_[0:2,0]
 	print("----pix----")
 	print(pix)
@@ -133,14 +139,18 @@ def inv_transf(pix_,K,R,t,z):
 	return xyz
 
 def discretizador(im,nfil,ncol,mostrar):
+	#Reducimos el mapa a una cuadricula de resolucion nfil x ncol
 	mapa_res = np.zeros((nfil,ncol))
 	M,N = im.shape
-	Mi = round(M/nfil)
-	Ni = round(N/ncol)
+	Mi = int(round(M/nfil))
+	Ni = int(round(N/ncol))
 
 	for i in range(0,nfil):
 		for j in range(0,ncol):
+			#Tomamos la cuadricula en la posicion del mapa
 			bloque = np.add.reduce(im[i*Mi:(i+1)*Mi,j*Ni:(j+1)*Ni],None)
+
+			#Con que haya un pixel de mapa en la cuadricula se considera pared
 			if bloque != 0 :
 				bloque = 1
 			mapa_res[i,j]=bloque
@@ -149,9 +159,11 @@ def discretizador(im,nfil,ncol,mostrar):
 		cv2.imshow("Map Image", mapa_res)
 		cv2.waitKey(1)
 	
+	#Devolvemos el mapa en la cuadricula
 	return mapa_res
 			
 def linealizador(mapa,nfil,ncol):
+	#Funcion que convierte el mapa en un vector nfil*ncol para su envio
 	tamVector = nfil*ncol
 	vector = np.ndarray((1,tamVector))
 
@@ -161,12 +173,67 @@ def linealizador(mapa,nfil,ncol):
 
 	return vector
 
+def xy_mapa(M,N,nfil,ncol,mostrar):
+	#Calculo de las coordenadas x,y de los puntos de la cuadricula del mapa
+	global K, cRw, ctW
+	x_mapa = np.ndarray((1,nfil*ncol))
+	y_mapa = np.ndarray((1,nfil*ncol))
+
+	Mi = int(round(M/nfil))
+	Mi_2 = int(round(Mi/2))
+	Ni = int(round(N/ncol))
+	Ni_2 = int(round(Ni/2))
+
+	#Calculamos las coordenadas de los puntos centrales de la cuadricula
+	for i in range(0,nfil):
+		for j in range(0,ncol):
+			pix_ = np.array([[Mi_2+i*Mi], [Ni_2+j*Ni], [1]])
+			xyz  = inv_transf(pix_,K,cRw,ctw,ctw[2])
+			x_mapa[0,i*nfil+j] = xyz[0]
+			y_mapa[0,i*nfil+j] = xyz[1]
+
+	#Mostramos por pantalla si lo deseamos
+	if mostrar == True :
+		print("X_mapa")
+		print(x_mapa)
+		print("Y_mapa")
+		print(y_mapa)
+
+	#Devolvemos en dos vectores nfil*ncol el resultado
+	return x_mapa,y_mapa
+
+def calc_coord_robot(x_r,y_r,x_mapa,y_mapa,nfil,ncol,mostrar):
+	#Calculamos la distancia de cada punto del mapa al robot
+	dist = np.ndarray((nfil,ncol))
+	for i in range(0,nfil):
+		for j in range(0,ncol):
+			dist[i][j] = sqrt(pow(x_r-x_mapa[0,i*nfil+j],2)+ pow(y_r-y_mapa[0,i*nfil+j],2))
+
+	#Nos quedmos con las coordenadas del elemento inimo
+	i_r,j_r=[int(np.where(dist==np.min(dist))[0]),int(np.where(dist==np.min(dist))[1])]
+
+	#Mostramos el resultado si lo deseamos
+	if mostrar == True:
+		print([i_r,j_r])
+
+	#Devolvemos el resultado
+	return i_r,j_r
+
+
+def actualiza_coord_xy(data) :
+	global xy_robot
+
+	xy_robot = [0,0]
+	xy_robot[0]=data.position.x
+	xy_robot[1]=data.position.y
 
 def listener():
 	global myCameraInfo
 	global K
 	global cRw
 	global ctw
+	global xy_robot
+
 	#Tamanio del mapa
 	fil = 30
 	col = 30
@@ -175,32 +242,50 @@ def listener():
 
 	myCameraInfo = CameraInfo()    
 	rospy.init_node('mapper', anonymous=True)
-	#rospy.Subscriber("camera1/camera_info", CameraInfo, newInfo)
 	rospy.Subscriber("camera1/image_raw", Image, getImage)
+	rospy.Subscriber('camera1/position_orientation', Pose, actualiza_coord_xy)
 	rate = rospy.Rate(30)
 
 	#Publisher para enviar los datos
 	mapa_pub=rospy.Publisher('mapper/mapa', Mapa, queue_size = 10)
 	data = Mapa()
 
+	#Espera de 1s al inicio de todo
+	time.sleep(1)
+
+	#Calculo de las coordenadas X, Y de cada punto del mapa
+	M,N,C = currentImage.shape
+	x_mapa,y_mapa = xy_mapa(M,N,fil,col,False)
+
+	#Calculo de la posicion del robot en coordenadas de mapa
+	i_r,j_r = calc_coord_robot(xy_robot[0],xy_robot[1],x_mapa,y_mapa,fil,col,True)
+
 	while not rospy.is_shutdown():
         #Segmentamos la imagen actual
 		im_bin = segmentacionBinaria(currentImage,240,(10,10),False)
-		im_morf = morf(im_bin,1,1,True)
+		im_morf = morf(im_bin,1,1,False)
+
+		#Discretizamos el mapa a la cuadricula
 		mapa = discretizador(im_morf,fil,col,True)
+		
+		#Ponemos la cuadricula como vector para su envio
 		mapa_vector = linealizador(mapa,fil,col)
 		
 		if enviar :
-			print(mapa_vector)
-			print(mapa_vector.astype(np.uint8).tolist())
+			#Enviamos los datos
 			data.mapa = mapa_vector.astype(np.uint8).tolist()[0][:]
+			data.mapa_x = x_mapa.astype(np.float32).tolist()[0][:]
+			data.mapa_y = y_mapa.astype(np.float32).tolist()[0][:]
 			data.nfil = fil
 			data.ncol = col
+			data.i_r = i_r
+			data.j_r = j_r
 			mapa_pub.publish(data)
-			enviar = 1
+			enviar = 0
+		
+		i_r,j_r = calc_coord_robot(xy_robot[0],xy_robot[1],x_mapa,y_mapa,fil,col,True)
+
 		rate.sleep()
-
-
 
 
 if __name__ == '__main__':
