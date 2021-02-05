@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy,sys,roslib
+import cv2
 from percepcion.msg import Mapa
 from omnirobot_control.msg import V_waypoint
 import numpy as np
@@ -24,7 +25,7 @@ def actualiza_mapa(data):
 
 	X_R = data.j_r
 	Y_R = data.i_r
-    
+
 	flag = 1
 
 # Clases
@@ -50,16 +51,16 @@ class Nodo:
 		self.f = self.g + self.h
 
 class AEstrella:
-	def __init__(self, mapa,X_R,Y_R):
+	def __init__(self, mapa,X_R,Y_R,X_F,Y_F):
 		
 		self.mapa = mapa
 		
-		globals()["pos_f"] = [int(input("X final: ")),int(input("Y final: "))]
+		globals()["pos_f"] = [Y_F,X_F]
 		
 		# Nodos de inicio y fin.
 		#self.inicio = Nodo(buscarPos(2, mapa))
 		#self.fin = Nodo(buscarPos(3, mapa))
-		self.inicio = Nodo([X_R,Y_R]) #en este ejemplo el inicio se representa con un 2
+		self.inicio = Nodo([Y_R,X_R]) #en este ejemplo el inicio se representa con un 2
 		self.fin = Nodo(pos_f)#el waypoint se representa con el numero 3
 
 		# Crea las listas abierta y cerrada.
@@ -82,8 +83,6 @@ class AEstrella:
 			self.camino = -1
 		else:	
            		self.camino = self.camino()
-
-		print('Hecho')
 
 			
 	
@@ -184,9 +183,21 @@ def convierte_camino(camino):
 	trayectoria = []
 	
 	for punto in camino:
-		trayectoria.append([mapa_xy[punto[0]][punto[1]][0],mapa_xy[punto[0]][punto[1]][1]])
+		trayectoria.append([mapa_xy[punto[1]][punto[0]][0],mapa_xy[punto[1]][punto[0]][1]])
 
 	return trayectoria
+
+def muestra_trayectoria(mapa_matriz,X_R,Y_R,X_F,Y_F,camino):
+	#Mostramos
+	mapa_completo = mapa_matriz[:,:]
+	mapa_completo[Y_R,X_R] = 1
+	mapa_completo[Y_F,X_F] = 1
+
+	for punto in camino:
+		mapa_completo[punto[0],punto[1]]=0.5
+	
+	cv2.imshow("Planificador",mapa_completo)
+	cv2.waitKey(1)
 # ---------------------------------------------------------------------
 
 def listener():
@@ -198,30 +209,44 @@ def listener():
 	pub = rospy.Publisher('planificador/trayectoria', V_waypoint, queue_size=10)	
 	rate = rospy.Rate(30)
 	while 1 :
-		print('Inicio. Esperamos mapa')
+
+		#Pedimos punto final:
+		X_F = int(input("X final: "))
+		Y_F = int(input("Y final: "))
+
+		#Inicio. Esperamos mapa
 		while flag==0:
 			rate.sleep()
 		flag = 0
-		print('Mapa recibido. Calculando trayectoria...')
-		planificador = AEstrella(mapa_matriz,X_R,Y_R)
-		print('Trayectoria calculada. Resultado:')
-		print(planificador.camino)
 
-		#Pasamos las coordenadas de la trayectoria a coordenadas del mundo
-		camino_xy = convierte_camino(planificador.camino)
-		print(camino_xy)
-		
-		#Enviamos por el topic
-		tam = len(camino_xy)
-		camino_xy = np.array(camino_xy)
-		data = V_waypoint()
-		x = camino_xy[:,0]
-		data.x = x.astype(np.float64).tolist()
-		y = camino_xy[:,1]
-		data.y = y.astype(np.float64).tolist()
-		data.tam = tam
-		pub.publish(data)
+		#Mapa recibido. Calculando trayectoria...
+		mapa_dilatado = mapa_matriz[:,:]
+		kernel = np.ones((3,3),np.uint8)
+		mapa_dilatado = cv2.dilate(mapa_dilatado,kernel,iterations = 1)
+		print(mapa_dilatado.shape)
+		planificador = AEstrella(mapa_dilatado,X_R,Y_R,X_F,Y_F)
+		#Trayectoria calculada
 
+		if planificador.camino != -1 :
+			#Mostramos el resultado
+			muestra_trayectoria(mapa_matriz,X_R,Y_R,X_F,Y_F,planificador.camino)
+
+			#Pasamos las coordenadas de la trayectoria a coordenadas del mundo
+			camino_xy = convierte_camino(planificador.camino)
+			
+			#Enviamos por el topic
+			tam = len(camino_xy)
+			camino_xy = np.array(camino_xy)
+			data = V_waypoint()
+			x = camino_xy[:,0]
+			data.x = x.astype(np.float64).tolist()
+			y = camino_xy[:,1]
+			data.y = y.astype(np.float64).tolist()
+			data.tam = tam
+			pub.publish(data)
+
+		else :
+			print("Punto no valido. Inserte otro")
 
 	
 if __name__ == '__main__':

@@ -5,6 +5,11 @@ from geometry_msgs.msg import Pose, Point, Quaternion, Twist
 from omnirobot_control.msg import Waypoint
 from math import sin,cos,sqrt,pow,atan2,pi
 import numpy as np
+import time as time
+
+#Activar si se va a ejecutar todo a la vez
+espera_inicial = 1 # 0 -> Se ejecuta al llamarlo / 1 -> Espera al inicio de la simulacion
+
 
 #Posicion actual (variable global)
 global pose_act, waypoint
@@ -62,6 +67,7 @@ def error_ang(waypoint):
 #Funcion que realiza el control
 def control():
 	global pose_act, waypoint
+	global espera_inicial
 	
 	rate = rospy.Rate(30)
 
@@ -82,8 +88,8 @@ def control():
 		controlsignal.linear.x = rospy.get_param('Kv')*error_dist(waypoint)*(cos(atan2(waypoint.y - pose_act.position.y,waypoint.x-pose_act.position.x)-pose_act.orientation.w))
 		controlsignal.linear.y = rospy.get_param('Kv')*error_dist(waypoint)*(sin(atan2(waypoint.y - pose_act.position.y,waypoint.x-pose_act.position.x)-pose_act.orientation.w))
 
-		print("error angular: ", error_ang(waypoint),"\tsenal de control: ", controlsignal.angular.z)
-		print("error lineal: ", error_dist(waypoint),"\tsenal de control: ", controlsignal.linear.x , " " , controlsignal.linear.y)
+		#print("error angular: ", error_ang(waypoint),"\tsenal de control: ", controlsignal.angular.z)
+		#print("error lineal: ", error_dist(waypoint),"\tsenal de control: ", controlsignal.linear.x , " " , controlsignal.linear.y)
 
 		kinetic.publish(controlsignal)
 		rate.sleep()
@@ -104,5 +110,8 @@ if __name__ == '__main__':
 	kinetic = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
 
 	#Llamamos a la funcion de control
+	#Espera de 4s al inicio de la simulacion
+	if espera_inicial :
+		time.sleep(4)
 	while(True):
 		control()

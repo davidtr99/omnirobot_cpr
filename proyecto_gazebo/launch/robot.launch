@@ -18,25 +18,6 @@
   <!-- Camara -->
   <node name="spawn_camera" pkg="gazebo_ros" type="spawn_model" args="-file $(find camera_description)/urdf/camera.urdf -urdf -x 0 -y 0 -z 4 -model CPRcamera" />
 
-  <!-- Hacemos el spawn de los difrentes nodos de nuestro proyecto-->
-
-  <!-- PERCEPCION-->
-  <!-- robotPosition.py -->
-  <node name="robotPosition" pkg="percepcion" type="robotPosition.py" />
-
-  <!-- mapeado.py -->
-  <node name="mapper" pkg="percepcion" type="mapeado.py" />
-
-  <!-- OMNIROBOT_CONTROL-->
-  <!-- Control.py -->
-  <node name="control_omnirobot" pkg="omnirobot_control" type="Control.py" />
-
-  <!-- dosificador.py -->
-  <node name="dosificador" pkg="omnirobot_control" type="dosificador.py" />
-
-  <!-- PLANIFICADOR -->
-  <!-- THETASTAR.py -->
-  <node name="planificador" pkg="planificador" type="THETASTAR.py" />
 
 
 </launch>

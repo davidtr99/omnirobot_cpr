@@ -6,6 +6,10 @@ from sensor_msgs.msg import CameraInfo, Image
 from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import Pose
 import numpy as np
+import time as time
+
+#Activar si se va a ejecutar todo a la vez
+espera_inicial = 1 # 0 -> Se ejecuta al llamarlo / 1 -> Espera al inicio de la simulacion
 
 bridge = CvBridge()
 
@@ -60,8 +64,6 @@ def getPosicion(imagenOR, h_color, th, mostrar):
 		n = n + M["m00"]
 	else:
 		cX, cY = 0, 0
-		print("\nERROR CENTRO")
-
 
 
 	if(mostrar == True):
@@ -116,6 +118,7 @@ def listener():
 	global K
 	global cRw
 	global ctw
+	global espera_inicial
 	myCameraInfo = CameraInfo()    
 	rospy.init_node('robotPosition', anonymous=True)
 	#rospy.Subscriber("camera1/camera_info", CameraInfo, newInfo)
@@ -126,14 +129,28 @@ def listener():
 	posicion_pub=rospy.Publisher('camera1/position_orientation', Pose, queue_size = 10)
 	data = Pose()
 
+	#Publisher para enviar centro en pixeles del robot al mapeado
+	pix_pub = rospy.Publisher('camera1/position_pix',Pose,queue_size = 10)
+	data_pix = Pose()
+
+	#Espera de 1s al inicio de todo
+	if espera_inicial :
+		time.sleep(4)
+
 	while not rospy.is_shutdown():
 		
 		# Sacamos los dos puntos necesarios con segmentacion
 		centroX, centroY = getPosicion(currentImage,30,(10,15), False)
+		
 		delanteraX, delanteraY = getPosicion(currentImage,122,(10,10), False)
 
 		#Orientacion: Angulo entre eje "x" del robot (direccion de avance) y el eje "x" [0,2*pi]
 		orientacion = atan2(float(delanteraY-centroY),float(delanteraX-centroX))
+		#Enviamos el centro el pix
+		data_pix.position.x = centroX
+		data_pix.position.y = centroY
+		pix_pub.publish(data_pix)
+		
 		#if orientacion > np.pi :
 		#	orientacion = orientacion - 2*np.pi
 
@@ -146,7 +163,7 @@ def listener():
 
 		pix_ = np.array([[centroX], [centroY], [1]])
 		xyz  = inv_transf(pix_,K,cRw,ctw,ctw[2])
-		print("Posicion: " + str(xyz[0]) + " - " + str(xyz[1]) + "\t//\t"  + "\t" + str(orientacion))
+		#print("Posicion: " + str(xyz[0]) + " - " + str(xyz[1]) + "\t//\t"  + "\t" + str(orientacion))
 		
 		#Se incluyen los valores de posicion y orientacion en 'data', que tipo Pose()
 		data.position.x = xyz[0]

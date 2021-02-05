@@ -9,6 +9,9 @@ from geometry_msgs.msg import Pose
 import numpy as np
 import time as time
 
+#Activar si se va a ejecutar todo a la vez
+espera_inicial = 1 # 0 -> Se ejecuta al llamarlo / 1 -> Espera al inicio de la simulacion
+
 bridge = CvBridge()
 
 currentImage = np.zeros((256,256,3),dtype="uint8")
@@ -62,7 +65,6 @@ def getPosicion(imagenOR, h_color, th, mostrar):
 		n = n + M["m00"]
 	else:
 		cX, cY = 0, 0
-		print("\nERROR CENTRO")
 
 	if(mostrar == True):
 		# Pintamos un circulo en la imagen original para ver el
@@ -202,15 +204,14 @@ def xy_mapa(M,N,nfil,ncol,mostrar):
 	#Devolvemos en dos vectores nfil*ncol el resultado
 	return x_mapa,y_mapa
 
-def calc_coord_robot(x_r,y_r,x_mapa,y_mapa,nfil,ncol,mostrar):
-	#Calculamos la distancia de cada punto del mapa al robot
-	dist = np.ndarray((nfil,ncol))
-	for i in range(0,nfil):
-		for j in range(0,ncol):
-			dist[i][j] = sqrt(pow(x_r-x_mapa[0,i*nfil+j],2)+ pow(y_r-y_mapa[0,i*nfil+j],2))
+def calc_coord_robot(x_r,y_r,M,N,nfil,ncol,mostrar):
+	Mi = int(round(M/nfil))
+	Mi_2 = int(round(Mi/2))
+	Ni = int(round(N/ncol))
+	Ni_2 = int(round(Ni/2))
 
-	#Nos quedmos con las coordenadas del elemento inimo
-	i_r,j_r=[int(np.where(dist==np.min(dist))[0]),int(np.where(dist==np.min(dist))[1])]
+	j_r = round((x_r - Ni_2)/Ni)
+	i_r = round((y_r - Mi_2)/Mi)
 
 	#Mostramos el resultado si lo deseamos
 	if mostrar == True:
@@ -224,8 +225,10 @@ def actualiza_coord_xy(data) :
 	global xy_robot
 
 	xy_robot = [0,0]
-	xy_robot[0]=data.position.x
+	xy_robot[0]=data.position.x 
 	xy_robot[1]=data.position.y
+
+
 
 def listener():
 	global myCameraInfo
@@ -233,32 +236,30 @@ def listener():
 	global cRw
 	global ctw
 	global xy_robot
+	global espera_inicial
 
 	#Tamanio del mapa
 	fil = 30
 	col = 30
-	
-	enviar = 1
 
 	myCameraInfo = CameraInfo()    
 	rospy.init_node('mapper', anonymous=True)
 	rospy.Subscriber("camera1/image_raw", Image, getImage)
-	rospy.Subscriber('camera1/position_orientation', Pose, actualiza_coord_xy)
+	rospy.Subscriber('camera1/position_pix', Pose, actualiza_coord_xy)
 	rate = rospy.Rate(30)
 
 	#Publisher para enviar los datos
 	mapa_pub=rospy.Publisher('mapper/mapa', Mapa, queue_size = 10)
 	data = Mapa()
 
-	#Espera de 1s al inicio de todo
-	time.sleep(1)
+	#Espera de 5s al inicio de la simulacion
+	if espera_inicial :
+		time.sleep(4)
 
+	time.sleep(1)
 	#Calculo de las coordenadas X, Y de cada punto del mapa
 	M,N,C = currentImage.shape
 	x_mapa,y_mapa = xy_mapa(M,N,fil,col,False)
-
-	#Calculo de la posicion del robot en coordenadas de mapa
-	i_r,j_r = calc_coord_robot(xy_robot[0],xy_robot[1],x_mapa,y_mapa,fil,col,True)
 
 	while not rospy.is_shutdown():
         #Segmentamos la imagen actual
@@ -270,20 +271,19 @@ def listener():
 		
 		#Ponemos la cuadricula como vector para su envio
 		mapa_vector = linealizador(mapa,fil,col)
+
+		#Calculo de la posicion del robot en coordenadas de mapa
+		i_r,j_r = calc_coord_robot(xy_robot[0],xy_robot[1],M,N,fil,col,False)
 		
-		if enviar :
-			#Enviamos los datos
-			data.mapa = mapa_vector.astype(np.uint8).tolist()[0][:]
-			data.mapa_x = x_mapa.astype(np.float32).tolist()[0][:]
-			data.mapa_y = y_mapa.astype(np.float32).tolist()[0][:]
-			data.nfil = fil
-			data.ncol = col
-			data.i_r = i_r
-			data.j_r = j_r
-			mapa_pub.publish(data)
-			enviar = 0
-		
-		i_r,j_r = calc_coord_robot(xy_robot[0],xy_robot[1],x_mapa,y_mapa,fil,col,True)
+		#Enviamos los datos
+		data.mapa = mapa_vector.astype(np.uint8).tolist()[0][:]
+		data.mapa_x = x_mapa.astype(np.float32).tolist()[0][:]
+		data.mapa_y = y_mapa.astype(np.float32).tolist()[0][:]
+		data.nfil = fil
+		data.ncol = col
+		data.i_r = i_r
+		data.j_r = j_r
+		mapa_pub.publish(data)
 
 		rate.sleep()
 

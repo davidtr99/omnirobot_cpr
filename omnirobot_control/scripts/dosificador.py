@@ -17,13 +17,17 @@ flag = 0
 def vector_waypoints(data):
 	global xi
 	global yi
+	global thetai
 	global nVector
 	global flag
+	global pto
 
 	flag = 1
 	xi = np.array(data.x)
 	yi = np.array(data.y)
 	nVector = data.tam
+	pto = 0 # Resetamos el inicio si replanifica o le llega una nueva trayectoria
+	thetai = np.zeros((nVector,1))
 
 def distancia(x,y):
 	return sqrt(pow((x - pose_act.position.x), 2) + pow((y - pose_act.position.y), 2))
@@ -39,7 +43,7 @@ def posicion(data):
 def listener():
 	global pto
 	global nVector
-	global xi, yi
+	global xi, yi,thetai
 	global flag
 
 	LookAhead = 0.3
@@ -64,7 +68,7 @@ def listener():
 	flag = 0
 	while(flag == 0):
 		rate.sleep()
-	thetai = np.zeros((nVector,1))
+	
 	while not rospy.is_shutdown():
 		
 		#Se incluyen los valores de posicion y orientacion en 'data', de tipo Pose()
