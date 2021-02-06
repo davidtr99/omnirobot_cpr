@@ -189,42 +189,87 @@ def convierte_camino(camino):
 
 def muestra_trayectoria(mapa_matriz,X_R,Y_R,X_F,Y_F,camino):
 	#Mostramos
-	mapa_completo = mapa_matriz[:,:]
+	mapa_completo = mapa_matriz.copy()
 	mapa_completo[Y_R,X_R] = 1
 	mapa_completo[Y_F,X_F] = 1
 
 	for punto in camino:
 		mapa_completo[punto[0],punto[1]]=0.5
 	
+	mapa_completo = cv2.resize(mapa_completo,(int(300),int(300)),interpolation = cv2.INTER_AREA)
 	cv2.imshow("Planificador",mapa_completo)
 	cv2.waitKey(1)
+
+def on_click(event,x,y,flags,param):
+	global X_F,Y_F
+	if(event == cv2.EVENT_LBUTTONDOWN):
+		X_F = x/10
+		Y_F = y/10
+		print(x/10,y/10)
+
+def check_colision(mapa, trayectoria):
+	global obstaculo_detectado
+	for punto in trayectoria :
+		if mapa[punto[0],punto[1]] != 0 :
+			obstaculo_detectado = 1
+			
+	
 # ---------------------------------------------------------------------
 
 def listener():
-	global X_R,Y_R
+	global X_F,Y_F
 	global flag
 	global mapa_matriz
+	global obstaculo_detectado
+
 	rospy.init_node('planificador', anonymous=True)
 	rospy.Subscriber('mapper/mapa', Mapa, actualiza_mapa)
 	pub = rospy.Publisher('planificador/trayectoria', V_waypoint, queue_size=10)	
 	rate = rospy.Rate(30)
+
+	trayectoria = -1
+	
+
 	while 1 :
 
 		#Pedimos punto final:
-		X_F = int(input("X final: "))
-		Y_F = int(input("Y final: "))
+		#X_F, Y_F = pedirPuntoFinal()
+		#X_F = int(input("X final: "))
+		#Y_F = int(input("Y final: "))
 
 		#Inicio. Esperamos mapa
 		while flag==0:
 			rate.sleep()
 		flag = 0
 
-		#Mapa recibido. Calculando trayectoria...
-		mapa_dilatado = mapa_matriz[:,:]
+		#Mapa recibido
+		mapa_dilatado = mapa_matriz.copy()
 		kernel = np.ones((3,3),np.uint8)
 		mapa_dilatado = cv2.dilate(mapa_dilatado,kernel,iterations = 1)
-		print(mapa_dilatado.shape)
+		
+		X_F, Y_F = -1,-1
+		
+		cv2.namedWindow('dilatado')
+		cv2.setMouseCallback('dilatado', on_click)
+		obstaculo_detectado = 0
+		while((X_F == -1 or Y_F == -1) and not obstaculo_detectado):
+			if trayectoria != -1:
+				check_colision(mapa_matriz,trayectoria)
+
+			mapa_dil_escalado = cv2.resize(mapa_matriz,(int(300),int(300)),interpolation = cv2.INTER_AREA)
+			cv2.imshow("dilatado", mapa_dil_escalado)
+			cv2.waitKey(1)
+			rate.sleep()
+
+
+		if(obstaculo_detectado):
+			X_F, Y_F = oldX_F, oldY_F
+
+		oldX_F , oldY_F = X_F, Y_F
+
 		planificador = AEstrella(mapa_dilatado,X_R,Y_R,X_F,Y_F)
+
+		trayectoria = planificador.camino
 		#Trayectoria calculada
 
 		if planificador.camino != -1 :
@@ -243,11 +288,14 @@ def listener():
 			y = camino_xy[:,1]
 			data.y = y.astype(np.float64).tolist()
 			data.tam = tam
-			pub.publish(data)
+			
 
 		else :
 			print("Punto no valido. Inserte otro")
-
+			data.x = [mapa_xy[X_R][Y_R][0]]
+			data.y = [mapa_xy[X_R][Y_R][1]]
+			data.tam = 1
+		pub.publish(data)
 	
 if __name__ == '__main__':
 	listener()
