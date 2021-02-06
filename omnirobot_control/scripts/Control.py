@@ -7,6 +7,9 @@ from math import sin,cos,sqrt,pow,atan2,pi
 import numpy as np
 import time
 
+#Activar si se va a ejecutar todo a la vez	
+espera_inicial = 1 # 0 -> Se ejecuta al llamarlo / 1 -> Espera al inicio de la simulacion
+
 #Posicion actual (variable global)
 global pose_act, waypoint, err_integral, last_error, previous_time
 last_error = 0
@@ -19,8 +22,8 @@ rospy.set_param('tolerancia', 0.05)
 
 #Ganancia de los controladores
 rospy.set_param('Kp', 1)
-rospy.set_param('Ki', 0.001)
-rospy.set_param('Kd', 0.1)
+rospy.set_param('Ki', 0.0)
+rospy.set_param('Kd', 0.1) #0.1
 rospy.set_param('Kw', 3)
 
 #Funcion para calcular el tiempo transcurrido en milisegundos
@@ -35,8 +38,6 @@ def update_waypoint(data):
 	waypoint.x = data.x
 	waypoint.y = data.y
 	waypoint.theta = data.theta
-	err_integral = 0 #Reiniciamos la acumulacion del error integral cada vez que llegue un nuevo punto
-	last_error = 0 #Reiniciamos el error anterior para el nuevo punto
 
 #Funcion que actualiza la posicion actual de robot, desde la camara percepcion
 def posicion(data):
@@ -82,13 +83,20 @@ def error_ang(waypoint):
 #Funcion que realiza el control
 def control():
 	global pose_act, waypoint
-	
+	global espera_inicial
+	#Primer valor de referencia
+	waypoint.x = 0
+	waypoint.y = 0
+	waypoint.theta = 0
+	err_integral = 0
+	last_error = 0 
+
 	rate = rospy.Rate(30)
 
     #Creamos el mensaje que publicaremos
 	controlsignal = Twist()
 
-    #Mientras el error sea mayor que la tolerancia aplicamos un control proporcional
+    #Mientras el error sea mayor que la tolerancia aplicamos un control
 	controlsignal.linear.x = 0
 	controlsignal.linear.z = 0
 	controlsignal.angular.x = 0
@@ -124,5 +132,7 @@ if __name__ == '__main__':
 	kinetic = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
 
 	#Llamamos a la funcion de control
+	if espera_inicial :	
+		time.sleep(4)
 	while(True):
 		control()
