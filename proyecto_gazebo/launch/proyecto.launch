@@ -35,8 +35,8 @@
   <node name="dosificador" pkg="omnirobot_control" type="dosificador.py" />
 
   <!-- PLANIFICADOR -->
-  <!-- THETASTAR.py -->
-  <node name="planificador" pkg="planificador" type="THETASTAR.py" />
+  <!-- planificador.py -->
+  <node name="planificador" pkg="planificador" type="planificador.py" />
 
 
 </launch>

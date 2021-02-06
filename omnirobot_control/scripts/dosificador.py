@@ -13,6 +13,9 @@ flag = 0
 #xi = np.array([0,0.5,1,1.5,2,2.5,2.5,2.5,2.5,2.5])
 #yi = np.array([0,0,0,0,0,0,0.5,1,1.5,2])
 
+#Orientacion del robot -> rosparam
+rospy.set_param('angle_robot',0)
+
 #Funcion con los puntos de la trayectoria a seguir
 def vector_waypoints(data):
 	global xi
@@ -27,7 +30,7 @@ def vector_waypoints(data):
 	yi = np.array(data.y)
 	nVector = data.tam
 	pto = 0 # Resetamos el inicio si replanifica o le llega una nueva trayectoria
-	thetai = np.zeros((nVector,1))
+	thetai = np.ones((nVector,1))*rospy.get_param('angle_robot')
 
 def distancia(x,y):
 	return sqrt(pow((x - pose_act.position.x), 2) + pow((y - pose_act.position.y), 2))
@@ -70,6 +73,8 @@ def listener():
 		rate.sleep()
 	
 	while not rospy.is_shutdown():
+		#Actualizamos la orientacion del robot
+		thetai = np.ones((nVector,1))*rospy.get_param('angle_robot')
 		
 		#Se incluyen los valores de posicion y orientacion en 'data', de tipo Pose()
 		data.x = xi[pto]

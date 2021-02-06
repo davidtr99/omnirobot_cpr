@@ -267,7 +267,7 @@ def listener():
 		im_morf = morf(im_bin,1,1,False)
 
 		#Discretizamos el mapa a la cuadricula
-		mapa = discretizador(im_morf,fil,col,True)
+		mapa = discretizador(im_morf,fil,col,False)
 		
 		#Ponemos la cuadricula como vector para su envio
 		mapa_vector = linealizador(mapa,fil,col)
