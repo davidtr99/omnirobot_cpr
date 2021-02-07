@@ -26,6 +26,7 @@ Rz = np.array([[cos(psi), -sin(psi), 0],[sin(psi),  cos(psi), 0], [0,  0,  1]])
 cRw = np.dot(Rz,Rx)
 ctw = np.array([[0],[0],[4]])
 
+#Obtencion de la imagen de la camara
 def getImage(data):
 	global currentImage
 	try:
@@ -34,12 +35,12 @@ def getImage(data):
 	except CvBridgeError as e:
 		print(e)
 
-
 def newInfo(data):
 	global myCameraInfo
 	myCameraInfo = data
 	rospy.loginfo("\nRecibido nueva info:\n" + str(data))
 
+#Obtencio de la posicion del robot en pixeles
 def getPosicion(imagenOR, h_color, th, mostrar):
 	imagen = imagenOR.copy()
 
@@ -79,6 +80,7 @@ def getPosicion(imagenOR, h_color, th, mostrar):
 
 	return cX, cY
 
+#Funcion para pintar en la imagen en centro
 def pintarCentros(imagenOR,centros,angulo):
 	imagen = imagenOR.copy()
 	for cX, cY in centros:
@@ -121,7 +123,6 @@ def listener():
 	global espera_inicial
 	myCameraInfo = CameraInfo()    
 	rospy.init_node('robotPosition', anonymous=True)
-	#rospy.Subscriber("camera1/camera_info", CameraInfo, newInfo)
 	rospy.Subscriber("camera1/image_raw", Image, getImage)
 	rate = rospy.Rate(30)
 
@@ -146,24 +147,21 @@ def listener():
 
 		#Orientacion: Angulo entre eje "x" del robot (direccion de avance) y el eje "x" [0,2*pi]
 		orientacion = atan2(float(delanteraY-centroY),float(delanteraX-centroX))
-		#Enviamos el centro el pix
+		
+		#Enviamos el centro en pix (necesario para mapeado)
 		data_pix.position.x = centroX
 		data_pix.position.y = centroY
 		pix_pub.publish(data_pix)
-		
-		#if orientacion > np.pi :
-		#	orientacion = orientacion - 2*np.pi
 
-		#Los pintamos para visualizarlos
+		#Pintamos el centro de la imagen
 		pintarCentros(currentImage,[(centroX,centroY),(delanteraX,delanteraY)],orientacion)
 		
-		
+		#Orientacion calculada
 		orientacion = -orientacion
 
-
+		#Calculo de la transformada inversa
 		pix_ = np.array([[centroX], [centroY], [1]])
 		xyz  = inv_transf(pix_,K,cRw,ctw,ctw[2])
-		#print("Posicion: " + str(xyz[0]) + " - " + str(xyz[1]) + "\t//\t"  + "\t" + str(orientacion))
 		
 		#Se incluyen los valores de posicion y orientacion en 'data', que tipo Pose()
 		data.position.x = xyz[0]
@@ -172,10 +170,7 @@ def listener():
 		data.orientation.w = orientacion
 		posicion_pub.publish(data)
 
-		
 		rate.sleep()
-
-
 
 
 if __name__ == '__main__':

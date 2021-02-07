@@ -27,6 +27,7 @@ Rz = np.array([[cos(psi), -sin(psi), 0],[sin(psi),  cos(psi), 0], [0,  0,  1]])
 cRw = np.dot(Rz,Rx)
 ctw = np.array([[0],[0],[4]])
 
+#Subscritor de la camara (actualizacion imagen)
 def getImage(data):
 	global currentImage
 	try:
@@ -35,51 +36,12 @@ def getImage(data):
 	except CvBridgeError as e:
 		print(e)
 
-
 def newInfo(data):
 	global myCameraInfo
 	myCameraInfo = data
 	rospy.loginfo("\nRecibido nueva info:\n" + str(data))
 
-def getPosicion(imagenOR, h_color, th, mostrar):
-	imagen = imagenOR.copy()
-
-	## BINARIZACION Y APLICACION DE CRITERIO DE COLOR EN HSV
-	hmin = h_color - th[0]
-	hmax = h_color + th[1]
-	frameHSV = cv2.cvtColor(imagen, cv2.COLOR_BGR2HSV)
-	frameThreshold = cv2.inRange(frameHSV,(hmin/360.0*179,0,0),(hmax/360.0*179,255,255))
-	im2, contours, hier = cv2.findContours(frameThreshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-
-	## CALCULO DEL CENTRO DEL BLOB
-	# Usamos los momentos de CV2 para su calculo mas rapido
-	n = 0
-	cX = 0
-	cY = 0
-	# Si hay varios bloques, hacemos la media ponderada por peso
-	M = cv2.moments(frameThreshold)
-	if(M["m00"] != 0):
-		cX += int(M["m10"]/M["m00"])
-		cY += int(M["m01"]/M["m00"])
-		n = n + M["m00"]
-	else:
-		cX, cY = 0, 0
-
-	if(mostrar == True):
-		# Pintamos un circulo en la imagen original para ver el
-		cv2.circle(imagen, (cX, cY), 2, (255, 255, 255), -1)
-		#cv2.putText(imagen, "centro", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-		## MOSTRAMOS IMAGENES
-		cv2.imshow("Image", currentImage)
-		cv2.imshow("HSV Image", frameHSV)
-		cv2.imshow("Threshold Image", frameThreshold)
-		cv2.waitKey(1)
-
-	return cX, cY
-
-
+#Segmentacion binaria de la imagen segun umbral
 def segmentacionBinaria(imagenOR, h_color, th, mostrar):
     imagen = imagenOR.copy()
     hmin = h_color - th[0]
@@ -95,6 +57,7 @@ def segmentacionBinaria(imagenOR, h_color, th, mostrar):
 
     return frameThreshold
 
+#Aplicacion de opening a la imagen (morfologia)
 def morf(im_o, rMaskOp, rMaskCl,mostrar):
 
 	#Aplicamos morfologia al mapa para eliminar pequenios huecos o imperfecciones
@@ -115,13 +78,14 @@ def morf(im_o, rMaskOp, rMaskCl,mostrar):
 
 	return im
 
+#Transformada inversa. Dada unas coordenadas en pixeles devuelve las coordenadas X,Y y Z
 def inv_transf(pix_,K,R,t,z):
 
 	#Realizamos la transformada inversa del punto que le pasemos asumiendo que estamos al altura del suelo
 	xyz = z*np.dot(np.dot(np.transpose(R),np.linalg.inv(K)),pix_) - np.dot(np.transpose(R), t)
 	
 	"""
-	#Desglose de la transformacion inversa a modo de Debug
+	#Desglose de la transformacion inversa
 	pix = pix_[0:2,0]
 	print("----pix----")
 	print(pix)
@@ -140,8 +104,8 @@ def inv_transf(pix_,K,R,t,z):
    
 	return xyz
 
+#Reducimos el mapa a una cuadricula de resolucion nfil x ncol
 def discretizador(im,nfil,ncol,mostrar):
-	#Reducimos el mapa a una cuadricula de resolucion nfil x ncol
 	mapa_res = np.zeros((nfil,ncol))
 	M,N = im.shape
 	Mi = int(round(M/nfil))
@@ -163,9 +127,9 @@ def discretizador(im,nfil,ncol,mostrar):
 	
 	#Devolvemos el mapa en la cuadricula
 	return mapa_res
-			
+
+#Funcion que convierte el mapa en un vector nfil*ncol para su envio
 def linealizador(mapa,nfil,ncol):
-	#Funcion que convierte el mapa en un vector nfil*ncol para su envio
 	tamVector = nfil*ncol
 	vector = np.ndarray((1,tamVector))
 
@@ -175,8 +139,8 @@ def linealizador(mapa,nfil,ncol):
 
 	return vector
 
+#Calculo de las coordenadas x,y de los puntos de la cuadricula del mapa
 def xy_mapa(M,N,nfil,ncol,mostrar):
-	#Calculo de las coordenadas x,y de los puntos de la cuadricula del mapa
 	global K, cRw, ctW
 	x_mapa = np.ndarray((1,nfil*ncol))
 	y_mapa = np.ndarray((1,nfil*ncol))
@@ -204,6 +168,7 @@ def xy_mapa(M,N,nfil,ncol,mostrar):
 	#Devolvemos en dos vectores nfil*ncol el resultado
 	return x_mapa,y_mapa
 
+#Calculamos las coordenadas del robot dentro de la cuadricula
 def calc_coord_robot(x_r,y_r,M,N,nfil,ncol,mostrar):
 	Mi = int(round(M/nfil))
 	Mi_2 = int(round(Mi/2))
@@ -220,7 +185,7 @@ def calc_coord_robot(x_r,y_r,M,N,nfil,ncol,mostrar):
 	#Devolvemos el resultado
 	return i_r,j_r
 
-
+#Actualizamos la posicion del robot en la imagen (robotPosition.py)
 def actualiza_coord_xy(data) :
 	global xy_robot
 
@@ -228,7 +193,7 @@ def actualiza_coord_xy(data) :
 	xy_robot[0]=data.position.x 
 	xy_robot[1]=data.position.y
 
-
+#-------------------------------------------------------------------
 
 def listener():
 	global myCameraInfo
@@ -244,19 +209,21 @@ def listener():
 
 	myCameraInfo = CameraInfo()    
 	rospy.init_node('mapper', anonymous=True)
+
+	#Nos subscribimos a la camara y a la posicion del robot en pixeles
 	rospy.Subscriber("camera1/image_raw", Image, getImage)
 	rospy.Subscriber('camera1/position_pix', Pose, actualiza_coord_xy)
-	rate = rospy.Rate(30)
+	rate = rospy.Rate(10)
 
 	#Publisher para enviar los datos
 	mapa_pub=rospy.Publisher('mapper/mapa', Mapa, queue_size = 10)
 	data = Mapa()
 
-	#Espera de 5s al inicio de la simulacion
+	#Espera de 4s al inicio de la simulacion (espera a que gazebo arranque)
 	if espera_inicial :
 		time.sleep(4)
-
 	time.sleep(1)
+	
 	#Calculo de las coordenadas X, Y de cada punto del mapa
 	M,N,C = currentImage.shape
 	x_mapa,y_mapa = xy_mapa(M,N,fil,col,False)

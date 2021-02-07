@@ -10,8 +10,6 @@ pto = 0
 nVector = 0
 pose_act = Pose()
 flag = 0
-#xi = np.array([0,0.5,1,1.5,2,2.5,2.5,2.5,2.5,2.5])
-#yi = np.array([0,0,0,0,0,0,0.5,1,1.5,2])
 
 #Orientacion del robot -> rosparam
 rospy.set_param('angle_robot',0)
@@ -49,6 +47,7 @@ def listener():
 	global xi, yi,thetai
 	global flag
 
+	#Parametro de control
 	LookAhead = 0.3
 	
 	rospy.init_node('dosificador', anonymous=True)
@@ -63,11 +62,8 @@ def listener():
 	#Publisher para enviar los datos waypoints
 	posicion_pub=rospy.Publisher('/omnirobot_control/dosificador', Waypoint, queue_size = 10)
 	data = Waypoint()
-
-	#Codigo auxiliar: Tomamos lista de puntos (Cambiar por un topic)
 	
-	
-	#Esperar a que le llegue
+	#Esperar a que le llegue la primera trayectoria
 	flag = 0
 	while(flag == 0):
 		rate.sleep()
@@ -81,12 +77,14 @@ def listener():
 		data.y = yi[pto]
 		data.theta = thetai[pto]
 		
+		#Implementamos el lookAhead
 		if (LookAhead > distancia(xi[pto],yi[pto])):
 			if(pto >= nVector-1):
 				pto = pto
 			else:
 				pto = pto + 1
 
+		#Enviamos la referencia que toque
 		posicion_pub.publish(data)		
 		rate.sleep()
 
